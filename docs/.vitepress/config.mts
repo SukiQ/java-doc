@@ -4,6 +4,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 export default withMermaid(
   defineConfig({
     lang: 'zh-CN',
+    base: '/java-doc/',
     title: 'Java 面试笔记',
     description: 'Java 后端面试知识库：Java 基础 / JVM / JUC / 数据库 / RocketMQ / Spring / 架构 / 设计模式',
     themeConfig: {
