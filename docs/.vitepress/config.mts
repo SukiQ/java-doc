@@ -23,7 +23,7 @@ export default withMermaid(
       collapsed: false,
       items: [
         { text: "集合框架", link: "/java-basic/collections" },
-        { text: "基础", link: "/java-basic/basic" }
+        { text: "String", link: "/java-basic/string" }
       ]
     },
     {
