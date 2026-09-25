@@ -83,10 +83,7 @@ get 流程：同 hash 定位桶 → 链表/树中用 equals 匹配
 
 `Object` 的 native 方法，返回一个 int 哈希码，把任意对象映射成一个整数，**确定该对象在哈希表中的索引位置**，可用于哈希容器（HashMap/HashSet）分桶定位的依据。
 
-::: tip
-
-hashCode 的筛选逻辑与**布隆过滤器**同构：**hashCode 不相等 → 对象一定不相等**（直接排除，不用比 equals）；**hashCode 相等 → 可能相等**（哈希冲突，再用 equals 复核）
-:::
+**提示**：hashCode 的筛选逻辑与**布隆过滤器**同构：**hashCode 不相等 → 对象一定不相等**（直接排除，不用比 equals）；**hashCode 相等 → 可能相等**（哈希冲突，再用 equals 复核）
 
 
 
@@ -119,7 +116,4 @@ JDK 8 的核心：**CAS + synchronized 锁桶头**，把锁粒度做到"单个�
 | null | key、value 都禁止（并发下 null 二义性无法消除） |
 | 复合操作 | `putIfAbsent` / `computeIfAbsent` 原子完成"没有才放" |
 
-::: info
-
-JDK 7 是 Segment 分段锁（并发度 = 段数 16）；JDK 8 细化到桶级。与 HashMap/Hashtable 的对比、size 与扩容细节见 JUC 并发容器模块的同名题。
-:::
+**注**：JDK 7 是 Segment 分段锁（并发度 = 段数 16）；JDK 8 细化到桶级。与 HashMap/Hashtable 的对比、size 与扩容细节见 JUC 并发容器模块的同名题。

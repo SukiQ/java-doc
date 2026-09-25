@@ -48,10 +48,7 @@ flowchart LR
     N -->|进入/心跳/离开事件| R[(Redis ZSet<br/>score 存时间戳<br/>)]
 ```
 
-::: info
-
-若 ZSet 单 key 过大，可按时间等指标分片，避免大 key 阻塞。
-:::
+**注**：若 ZSet 单 key 过大，可按时间等指标分片，避免大 key 阻塞。
 
 
 

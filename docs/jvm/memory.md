@@ -14,10 +14,7 @@
 - 逻辑上分为年轻代和老年代
 - 物理上可不连续，通过 `-Xms` 和 `-Xmx` 控制最小/最大值
 
-::: info
-
-一般会把 `-Xms` 和 `-Xmx` 设置为一样的，这样JVM就不需要在GC后去修改堆内存的大小。默认最大内存是服务器内存的1/4
-:::
+**注**：一般会把 `-Xms` 和 `-Xmx` 设置为一样的，这样JVM就不需要在GC后去修改堆内存的大小。默认最大内存是服务器内存的1/4
 
 
 
@@ -29,10 +26,7 @@
 - JDK 7 及以前由永久代（PermGen）实现，JDK 8 起改为元空间（Metaspace），使用本地内存
 - 运行时**常量池**是方法区的一部分
 
-::: info
-
-元空间取代永久代的原因：永久代在堆内、大小受 `-XX:MaxPermSize` 限制，元空间使用**本地内存**，默认只受物理内存限制）
-:::
+**注**：元空间取代永久代的原因：永久代在堆内、大小受 `-XX:MaxPermSize` 限制，元空间使用**本地内存**，默认只受物理内存限制）
 
 
 
@@ -84,10 +78,7 @@
 
 **双亲委派机制**：收到加载请求时，先委派父加载器加载，父加载器无法完成时才自己加载。好处是防止核心类被篡改（如自定义 `java.lang.String` 会被 Bootstrap 加载的覆盖），也避免重复加载。
 
-::: tip
-
-JDK 9+ Extension ClassLoader 改为平台类加载器 Platform ClassLoader，加载 Java 平台模块，用于实现模块化
-:::
+**要点**：JDK 9+ Extension ClassLoader 改为平台类加载器 Platform ClassLoader，加载 Java 平台模块，用于实现模块化
 
 
 
@@ -425,7 +416,4 @@ while (true) {
 | unable to create new thread | `jstack`/线程数统计 → 线程池无界创建 → 统一线程池；或调系统 ulimit |
 | Direct buffer memory | NIO 堆外内存未释放 → 检查 Netty/DirectByteBuffer 使用，配置 `-XX:MaxDirectMemorySize` |
 
-::: info
-
-预防优于排查：接入监控告警（老年代使用率 >80% 报警、GC 频次异常报警）、压测验证容量、核心服务常开 HeapDumpOnOutOfMemoryError。
-:::
+**注**：预防优于排查：接入监控告警（老年代使用率 >80% 报警、GC 频次异常报警）、压测验证容量、核心服务常开 HeapDumpOnOutOfMemoryError。

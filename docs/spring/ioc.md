@@ -19,10 +19,7 @@
 
 三级缓存存的是**工厂**而不是直接引用，目的是给 **AOP** 留口子
 
-::: info
-
-Spring Boot 2.6+ 默认**禁止循环依赖**（启动直接报错），鼓励消除循环；可用 `spring.main.allow-circular-references=true` 强行放开（不建议）
-:::
+**注**：Spring Boot 2.6+ 默认**禁止循环依赖**（启动直接报错），鼓励消除循环；可用 `spring.main.allow-circular-references=true` 强行放开（不建议）
 
 
 

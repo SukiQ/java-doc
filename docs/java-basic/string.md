@@ -29,10 +29,7 @@ String e = "ab" + var;          // 运行期拼接 → StringBuilder → 堆新�
 - `new String("abc")` 创建 **1 或 2 个对象**：池里字面量（若首次出现）+ 堆对象
 - `intern()`：主动查池，没有则放入（JDK 7 起放的是堆对象引用），返回池中引用
 
-::: info
-
-与"String 为什么不可变"互为因果：**因为不可变，共享才安全**；常量池的复用机制正是建立在这之上（见下一题）。
-:::
+**注**：与"String 为什么不可变"互为因果：**因为不可变，共享才安全**；常量池的复用机制正是建立在这之上（见下一题）。
 
 
 ## String 为什么设计成 final 不可变的？
@@ -71,7 +68,4 @@ String e = "ab" + var;          // 运行期拼接 → StringBuilder → 堆新�
 | **类 final** | 不可被继承 | 防止子类改写行为，破坏不可变语义 |
 | **字段 final + private** | 内部数组引用不可再指向别处，且外部拿不到 | 从源头上杜绝修改入口 |
 
-::: info
-
-追问点：① 大量拼接用 StringBuilder（不可变 String 循环 + 会产生大量临时对象）；② JDK 9 的 compact strings（char[] → byte[]，拉丁字符省一半内存）；③ 不可变带来的代价：每次"修改"都新建对象，用 Builder/池化缓解。
-:::
+**注**：追问点：① 大量拼接用 StringBuilder（不可变 String 循环 + 会产生大量临时对象）；② JDK 9 的 compact strings（char[] → byte[]，拉丁字符省一半内存）；③ 不可变带来的代价：每次"修改"都新建对象，用 Builder/池化缓解。
