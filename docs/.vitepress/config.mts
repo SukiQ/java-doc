@@ -24,7 +24,6 @@ export default withMermaid(
       collapsed: false,
       items: [
         { text: "String", link: "/java-basic/string" },
-        { text: "反射", link: "/java-basic/reflection" },
         { text: "集合框架", link: "/java-basic/collections" }
       ]
     },
