@@ -25,6 +25,7 @@ export default withMermaid(
       items: [
         { text: "数值", link: "/java-basic/numbers" },
         { text: "String", link: "/java-basic/string" },
+        { text: "序列化", link: "/java-basic/serialization" },
         { text: "反射", link: "/java-basic/reflection" },
         { text: "集合框架", link: "/java-basic/collections" }
       ]
