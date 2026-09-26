@@ -24,6 +24,7 @@ export default withMermaid(
       collapsed: false,
       items: [
         { text: "String", link: "/java-basic/string" },
+        { text: "反射", link: "/java-basic/reflection" },
         { text: "集合框架", link: "/java-basic/collections" }
       ]
     },
@@ -87,7 +88,8 @@ export default withMermaid(
       collapsed: false,
       items: [
         { text: "高并发设计", link: "/architecture/high-concurrency" },
-        { text: "分布式任务", link: "/architecture/distributed-task" }
+        { text: "分布式任务", link: "/architecture/distributed-task" },
+        { text: "IO", link: "/architecture/io" }
       ]
     },
     {
