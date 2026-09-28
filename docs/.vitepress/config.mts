@@ -105,5 +105,10 @@ export default withMermaid(
       outline: { level: [2, 3] }
     },
     mermaid: {},
+    vite: {
+      optimizeDeps: {
+        include: ['mermaid'],
+      },
+    },
   })
 )
