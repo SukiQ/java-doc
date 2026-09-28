@@ -91,6 +91,7 @@ export default withMermaid(
       items: [
         { text: "高并发设计", link: "/architecture/high-concurrency" },
         { text: "分布式任务", link: "/architecture/distributed-task" },
+        { text: "分布式 ID", link: "/architecture/distributed-id" },
         { text: "IO", link: "/architecture/io" }
       ]
     },
