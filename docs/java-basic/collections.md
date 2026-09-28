@@ -1,8 +1,8 @@
 ---
-title: 集合框架
+title: 集合
 ---
 
-# 集合框架
+# 集合
 
 
 ## Java 常用集合有哪些？它们的区别是什么？
@@ -23,6 +23,11 @@ title: 集合框架
 | 定位 | **默认首选** | 头尾插删、当队列 | 已淘汰 |
 
 
+::: tip
+Vector的替代方案:
+- Collections.synchronizedList（适合读多写少）
+- CopyOnWriteArrayList（适合读非常多、写很少）
+:::
 
 ### Set
 

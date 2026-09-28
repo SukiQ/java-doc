@@ -31,7 +31,6 @@ String e = "ab" + var;          // 运行期拼接 → StringBuilder → 堆新�
 
 ## String 为什么设计成 final 不可变的？
 
-### 五大设计原因
 
 | # | 原因 | 说明 |
 |---|------|------|
