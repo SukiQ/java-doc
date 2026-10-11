@@ -31,3 +31,23 @@ BigDecimal c = BigDecimal.valueOf(0.1);
 // 除不尽必须指定精度和舍入模式，否则抛 ArithmeticException
 a.divide(new BigDecimal("3"), 2, RoundingMode.HALF_UP);
 ```
+
+
+
+## BigDecimal 怎么比较大小？
+
+一律用 **compareTo**，别用 equals——equals 连 **scale（小数位数）**一起比，`1.0` 和 `1.00` 不相等；compareTo 只比数值。
+
+```java
+new BigDecimal("1.0").equals(new BigDecimal("1.00"));    // false（scale 不同）
+new BigDecimal("1.0").compareTo(new BigDecimal("1.00")); // 0（数值相等）
+
+// 返回值：负数 = 小于，0 = 等于，正数 = 大于
+if (a.compareTo(b) > 0)  { /* a > b */ }
+if (a.compareTo(b) == 0) { /* a == b */ }
+```
+
+| 追问 | 答案 |
+|------|------|
+| 放进 HashSet/HashMap | `1.0` 和 `1.00` 是**两个 key**（按 equals/hashCode，hashCode 也含 scale） |
+| 放进 TreeMap/TreeSet | 按 compareTo，`1.0` 和 `1.00` 算**同一个 key** |
