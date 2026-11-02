@@ -241,7 +241,7 @@ HotSpot 使用**直接指针**。
 访问：HotSpot 用直接指针（快），句柄池利于对象移动
 ```
 
-面试要点：五步流程、Mark Word 存什么、8 字节对齐、直接指针 vs 句柄的取舍。
+要点小结：五步流程、Mark Word 存什么、8 字节对齐、直接指针 vs 句柄的取舍。
 
 
 
@@ -370,7 +370,7 @@ while (true) {
 定位代码：泄漏（只加不删）或溢出（一次太多）
 ```
 
-面试要点：各区域 OOM 的典型报错与成因、`-XX:+HeapDumpOnOutOfMemoryError` 提前配置、MAT 分析思路、静态集合与 ThreadLocal 两大泄漏源。
+要点小结：各区域 OOM 的典型报错与成因、`-XX:+HeapDumpOnOutOfMemoryError` 提前配置、MAT 分析思路、静态集合与 ThreadLocal 两大泄漏源。
 
 
 

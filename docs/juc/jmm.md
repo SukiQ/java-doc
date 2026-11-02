@@ -155,4 +155,4 @@ volatile 写 = x  ┘
 应用：volatile、synchronized、CAS 的底层实现
 ```
 
-面试要点：屏障的两种作用（禁重排 + 缓存同步）、四种屏障类型、volatile 的屏障插入策略。
+要点小结：屏障的两种作用（禁重排 + 缓存同步）、四种屏障类型、volatile 的屏障插入策略。

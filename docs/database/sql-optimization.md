@@ -151,7 +151,7 @@ trace：看优化器选索引的成本决策过程
 顺序：explain 定位 → 索引没按预期走时用 trace 挖原因
 ```
 
-面试要点：type 等级顺序及 ALL/range/ref 的含义、key_len 判断复合索引用几列、filesort 与 temporary 的成因和优化方向、trace 的开关流程与适用场景。
+要点小结：type 等级顺序及 ALL/range/ref 的含义、key_len 判断复合索引用几列、filesort 与 temporary 的成因和优化方向、trace 的开关流程与适用场景。
 
 ## 常见的 SQL 优化点有哪些？
 
@@ -264,7 +264,7 @@ select count(*) from orders;
 数据量层：深分页延迟关联、小表驱动、批量操作、join 限 3 表
 ```
 
-面试要点：索引失效的五种写法、深分页两种方案、in 与 exists 的选择依据。
+要点小结：索引失效的五种写法、深分页两种方案、in 与 exists 的选择依据。
 
 
 
@@ -410,7 +410,7 @@ limit 慢的本质：offset 是扫描后丢弃，不是跳过
 最好 → 业务限制翻页深度
 ```
 
-面试要点：limit offset 的执行本质、游标分页的适用与限制、延迟关联为什么快（回表次数从 offset+n 降到 n）。
+要点小结：limit offset 的执行本质、游标分页的适用与限制、延迟关联为什么快（回表次数从 offset+n 降到 n）。
 
 
 
@@ -472,7 +472,7 @@ show profile for query 1;         -- 查看各阶段耗时
 区分：SQL 自身慢（索引/写法）vs 系统慢（IO/锁/连接）
 ```
 
-面试要点：慢日志关键参数、定位流程、profile 各阶段含义、buffer pool 命中率判断。
+要点小结：慢日志关键参数、定位流程、profile 各阶段含义、buffer pool 命中率判断。
 
 
 
@@ -509,7 +509,7 @@ truncate：DDL，清空表，快，不可回滚，重置自增
 drop：DDL，删表结构+数据，不可回滚
 ```
 
-面试要点：DML 与 DDL 的本质区别、回滚能力的由来（是否走 undo log）、误删数据的三种恢复手段。
+要点小结：DML 与 DDL 的本质区别、回滚能力的由来（是否走 undo log）、误删数据的三种恢复手段。
 
 
 
@@ -564,7 +564,7 @@ alter table t add column remark varchar(100),
 原则：低峰 + 演练 + 留磁盘 + 控延迟
 ```
 
-面试要点：三种 algorithm 的区别、gh-ost/pt-osc 的影子表原理、主从架构下的 DDL 顺序。
+要点小结：三种 algorithm 的区别、gh-ost/pt-osc 的影子表原理、主从架构下的 DDL 顺序。
 
 ## MySQL 执行 delete 后为什么磁盘空间不释放？
 

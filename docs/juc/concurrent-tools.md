@@ -85,7 +85,7 @@ void accessResource() throws InterruptedException {
 限制并发数   → Semaphore（持续限流）
 ```
 
-面试要点：三者语义差异（一次性/可循环/许可制）、谁阻塞的区别、典型场景、CyclicBarrier 的自动重置与 BrokenBarrier。
+要点小结：三者语义差异（一次性/可循环/许可制）、谁阻塞的区别、典型场景、CyclicBarrier 的自动重置与 BrokenBarrier。
 
 
 
@@ -158,4 +158,4 @@ CompletableFuture = Future + 回调 + 链式 + 组合 + 异常处理
 注意：生产环境显式传线程池
 ```
 
-面试要点：与 Future 的差异（回调/链式/组合）、thenApply vs thenCompose、allOf 并行编排示例、默认 commonPool 的坑。
+要点小结：与 Future 的差异（回调/链式/组合）、thenApply vs thenCompose、allOf 并行编排示例、默认 commonPool 的坑。

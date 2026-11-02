@@ -99,7 +99,7 @@ where id = 1 and version = #{oldVersion};
 选择：写多冲突高 → 悲观；读多冲突低 → 乐观
 ```
 
-面试要点：两种思想的假设差异、CAS 原理与三大问题（ABA/自旋/单变量）、数据库乐观锁的版本号实现。
+要点小结：两种思想的假设差异、CAS 原理与三大问题（ABA/自旋/单变量）、数据库乐观锁的版本号实现。
 
 
 
@@ -194,7 +194,7 @@ for (int i = 0; i < 100; i++) {
 方向：只升不降，绝大多数锁停在轻量级以下
 ```
 
-面试要点：四级升级顺序与触发条件、Mark Word 各状态存什么、只能升级不能降级、自适应自旋/锁消除/锁粗化。
+要点小结：四级升级顺序与触发条件、Mark Word 各状态存什么、只能升级不能降级、自适应自旋/锁消除/锁粗化。
 
 
 
@@ -284,7 +284,7 @@ ReentrantLock = AQS 实现的可重入锁
 选型：无特殊需求用 synchronized，需要高级特性才用 ReentrantLock
 ```
 
-面试要点：与 synchronized 的差异、五大高级特性、公平/非公平区别、AQS 的 state + CLH 队列原理。
+要点小结：与 synchronized 的差异、五大高级特性、公平/非公平区别、AQS 的 state + CLH 队列原理。
 
 
 
@@ -365,7 +365,7 @@ AQS = volatile state + CLH 队列 + park/unpark
 一套骨架支撑了 Lock、Semaphore、Latch、读写锁
 ```
 
-面试要点：state 的多义性、CLH 队列 + park 的挂起唤醒、独占/共享两种模式、模板方法设计、哪些类基于它。
+要点小结：state 的多义性、CLH 队列 + park 的挂起唤醒、独占/共享两种模式、模板方法设计、哪些类基于它。
 
 ## 公平锁和非公平锁的区别？
 
@@ -450,7 +450,7 @@ new ReentrantLock();       // 默认非公平
 默认非公平的原因：插队成功省去线程唤醒开销，吞吐量更高
 ```
 
-面试要点：定义差异、AQS 实现区别（hasQueuedPredecessors）、默认非公平的原因（省唤醒开销）、饥饿风险。
+要点小结：定义差异、AQS 实现区别（hasQueuedPredecessors）、默认非公平的原因（省唤醒开销）、饥饿风险。
 
 
 
@@ -545,7 +545,7 @@ try { /* 修改数据 */ } finally { writeLock.unlock(); }
 AQS：state 高 16 位读锁计数、低 16 位写锁重入
 ```
 
-面试要点：兼容矩阵、ReadWriteLock 的 state 拆分、写锁可降级/读锁不可升级、写饥饿与 StampedLock。
+要点小结：兼容矩阵、ReadWriteLock 的 state 拆分、写锁可降级/读锁不可升级、写饥饿与 StampedLock。
 
 
 
@@ -640,4 +640,4 @@ while (true) {
 避免：锁排序 + tryLock 超时 + 一次性申请 + 减小临界区
 ```
 
-面试要点：四个必要条件、经典双锁互等代码、jstack/Arthas 排查、破坏条件的五种策略、tryLock 退避写法。
+要点小结：四个必要条件、经典双锁互等代码、jstack/Arthas 排查、破坏条件的五种策略、tryLock 退避写法。

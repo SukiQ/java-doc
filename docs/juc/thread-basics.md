@@ -207,7 +207,7 @@ sleep：Thread 的方法，不释放锁，随时可用，用于延时
 一句话：wait 是"让出锁等通知"，sleep 是"抱着锁睡一会"
 ```
 
-面试要点：是否释放锁（核心差异）、wait 为什么在 Object、wait 必须在 synchronized 内、while 防虚假唤醒。
+要点小结：是否释放锁（核心差异）、wait 为什么在 Object、wait 必须在 synchronized 内、while 防虚假唤醒。
 
 
 
@@ -297,7 +297,7 @@ try {
 习惯：线程池场景用完必须 remove()
 ```
 
-面试要点：数据存在线程上而非 ThreadLocal、key 弱引用 value 强引用、泄漏根源是线程池长生命周期、remove() 习惯、TTL 解决池化传递。
+要点小结：数据存在线程上而非 ThreadLocal、key 弱引用 value 强引用、泄漏根源是线程池长生命周期、remove() 习惯、TTL 解决池化传递。
 
 ## 描述线程的生命周期
 

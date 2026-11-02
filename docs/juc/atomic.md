@@ -126,4 +126,4 @@ ABA = 值改回原样，CAS 感知不到中间变化
 解决：版本号（Stamped）/ 标记（Markable）/ 加锁 / 不可变
 ```
 
-面试要点：ABA 的成因（CAS 只比值）、何时有害（引用/复合状态，纯数值无害）、AtomicStampedReference 的版本号机制。
+要点小结：ABA 的成因（CAS 只比值）、何时有害（引用/复合状态，纯数值无害）、AtomicStampedReference 的版本号机制。

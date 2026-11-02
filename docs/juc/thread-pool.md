@@ -87,7 +87,7 @@ public ThreadPoolExecutor(
 配置要素：核心数 + 最大数 + 队列 + 拒绝策略
 ```
 
-面试要点：能讲清五种预置池的特点和风险、ThreadPoolExecutor 的参数含义、任务提交流程、四种拒绝策略。
+要点小结：能讲清五种预置池的特点和风险、ThreadPoolExecutor 的参数含义、任务提交流程、四种拒绝策略。
 
 
 
@@ -235,4 +235,4 @@ executor.allowCoreThreadTimeOut(true);  // 核心线程也超时回收
 临时线程：队列满后创建，空闲超时回收，应对突发流量
 ```
 
-面试要点：创建时机的优先级（核心 → 队列 → 临时 → 拒绝）、临时线程的回收机制、`allowCoreThreadTimeOut` 的作用。
+要点小结：创建时机的优先级（核心 → 队列 → 临时 → 拒绝）、临时线程的回收机制、`allowCoreThreadTimeOut` 的作用。

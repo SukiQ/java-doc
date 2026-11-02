@@ -130,4 +130,4 @@ ServiceLoader<Driver> drivers = ServiceLoader.load(Driver.class);
 本质：让"本该父加载器加载的类"由子加载器加载，或反过来
 ```
 
-面试要点：委派流程与两大好处、SPI 为什么必须打破（Bootstrap 看不到应用类）、Tomcat 隔离的加载顺序、重写 loadClass 与 findClass 的区别。
+要点小结：委派流程与两大好处、SPI 为什么必须打破（Bootstrap 看不到应用类）、Tomcat 隔离的加载顺序、重写 loadClass 与 findClass 的区别。

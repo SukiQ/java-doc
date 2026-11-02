@@ -38,7 +38,7 @@ MyISAM：表锁、非聚簇、count 快，已淘汰
 8.0 已彻底移除 MyISAM 作为系统表引擎
 ```
 
-面试要点：事务/锁粒度/聚簇三大区别、count(*) 行为差异的原因（MVCC 行数不定）、MyISAM 索引存地址 vs InnoDB 二级索引存主键。
+要点小结：事务/锁粒度/聚簇三大区别、count(*) 行为差异的原因（MVCC 行数不定）、MyISAM 索引存地址 vs InnoDB 二级索引存主键。
 
 
 
@@ -99,4 +99,4 @@ change buffer：二级非唯一索引的写缓冲，写多读少受益
 脏页：redo 写满会强制刷盘 → 业务抖动
 ```
 
-面试要点：朴素 LRU 的污染问题与两区方案、old 区晋升条件（innodb_old_blocks_time）、change buffer 为什么唯一索引用不上、脏页刷盘的触发点。
+要点小结：朴素 LRU 的污染问题与两区方案、old 区晋升条件（innodb_old_blocks_time）、change buffer 为什么唯一索引用不上、脏页刷盘的触发点。

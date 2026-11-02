@@ -2,8 +2,8 @@
 layout: home
 
 hero:
-  name: "Java 面试笔记"
-  text: "后端面试知识库"
+  name: "Java 学习笔记"
+  text: "后端个人知识库"
   tagline: Java 基础 · JVM · JUC · 数据库 · RocketMQ · Spring · 架构 · 设计模式
   actions:
     - theme: brand
@@ -23,3 +23,4 @@ features:
   - title: 框架与架构
     details: Spring 全家桶、RocketMQ、高并发设计、设计模式
 ---
+

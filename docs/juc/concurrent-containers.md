@@ -79,7 +79,7 @@ JDK8：空桶 CAS + 非空桶 synchronized 锁头节点，并发度 = 桶数
 null 禁止：并发下 containsKey 复核不可信，二义性无法消除
 ```
 
-面试要点：JDK7 vs JDK8 锁粒度演变、get 为什么无锁、size 的 LongAdder 思路、null 二义性、computeIfAbsent 原子复合操作。
+要点小结：JDK7 vs JDK8 锁粒度演变、get 为什么无锁、size 的 LongAdder 思路、null 二义性、computeIfAbsent 原子复合操作。
 
 
 
@@ -146,4 +146,4 @@ public E get(int index) {
 代价：写 O(n) 复制、内存翻倍、弱一致迭代
 ```
 
-面试要点：写时复制的流程、为什么迭代不会 ConcurrentModificationException、读多写少定位、写代价与内存代价。
+要点小结：写时复制的流程、为什么迭代不会 ConcurrentModificationException、读多写少定位、写代价与内存代价。
