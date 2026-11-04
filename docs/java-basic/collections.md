@@ -78,18 +78,7 @@ JDK 8 的 HashMap = **数组 + 链表 + 红黑树**。
 
 <img src="/pictures/11.png" alt="11" style="zoom:50%;" />
 
-### hash 扰动函数
-
-```java
-hash = (h = key.hashCode()) ^ (h >>> 16)   // 高 16 位异或低 16 位
-index = (n - 1) & hash                     // n 为 2 的幂，等价取模但更快
-```
-
-容量小（16）时只有低 4 位参与定位，高位变化全被丢弃；扰动把**高位信息混进低位**，让分布更均匀、减少碰撞。
-
-### 核心流程
-
-put 流程：
+### Put 流程
 
 1. 计算 hash
 2. 定位桶
@@ -98,35 +87,24 @@ put 流程：
 5. 树化判断：链长 ≥ 8 且 table ≥ 64 才转红黑树
 6. 扩容判断：size > 容量 × 0.75（负载因子）→ resize
 
-get 流程：同 hash 定位桶 → 链表/树中用 equals 匹配
+### Get 流程
 
-### 扩容 resize
+同 hash 定位桶 → 链表/树中用 equals 匹配
 
-- 触发：size > 容量 × 0.75 → 容量、阈值翻倍，单次 O(n)、均摊 O(1)
-- **不重新计算 hash**：JDK 8 把每条链按 `hash & oldCap` 拆成 lo/hi 两条——结果为 0 留**原位置**，否则去**原位置 + oldCap**，链表相对顺序不变
+### Resize 流程
 
-### 树化与退化
-
-- 链长 ≥ 8 且 table ≥ 64 → 转红黑树；table < 64 时**优先扩容**而不是树化
-- 扩容拆分或删除后节点 ≤ 6 → 退化回链表（比 8 小留缓冲，防止在 8 附近反复增删来回变换）
-- 阈值为什么是 8：正常散列下链长服从泊松分布，到 8 的概率约**千万分之六**——树化只是哈希劣化（打碰撞攻击）的兜底，不是常态
+1. 当 HashMap 中的元素个数 size 超过了扩容阈值时，就会触发扩容。阈值（12） = 容量（16） × 加载因子（0.75）。
+2. 分配一块大小为 newCapacity 的全新内存空间
+3. JDK 8 使用高低位链表拆分，低位位置不变，高位进行迁移。JDK 7 使用 Rehash 重新计算每个元素的位置并迁移
 
 ### JDK 7 vs JDK 8
 
-| 对比 | JDK 7 | JDK 8 |
-|------|-------|-------|
-| 结构 | 数组 + 链表 | 数组 + 链表 + 红黑树 |
-| 插入方式 | 头插 | 尾插 |
+| 对比 | JDK 7 | JDK 8                                     |
+|------|-------|-------------------------------------------|
+| 结构 | 数组 + 链表 | 数组 + 链表 + 红黑树                      |
+| 插入方式 | 头插 | 尾插                                      |
 | 并发扩容 | 头插逆序 → 链表**成环死循环** | 拆分不成环，但 put 仍会**相互覆盖丢数据** |
-| 扩容 | 全部 rehash 重算位置 | hash & oldCap 二选一，留在原位或原位 + oldCap |
-
-### 为什么线程不安全
-
-- JDK 7：并发扩容 + 头插 → 链表成环，下次 get **死循环**（CPU 100%）
-- JDK 8：改尾插不成环了，但并发 put 仍会**覆盖丢数据**，`++size` 也不精确
-- 迭代 fail-fast：迭代中结构被改，抛 ConcurrentModificationException（modCount 检测）
-- 需要并发 → ConcurrentHashMap（CAS + synchronized 锁桶头，见 JUC 并发容器）
-
+| 扩容 | 全部 rehash 重算位置 | 进行高地位计算，留在原位或迁移            |
 
 ## ArrayDeque 和 LinkedList 的区别？
 
@@ -141,34 +119,39 @@ get 流程：同 hash 定位桶 → 链表/树中用 equals 匹配
 **结论**：**栈和队列默认选 ArrayDeque**（JDK 官方文档推荐），LinkedList 只在还需要 List 语义时考虑。
 :::
 
+## 什么是 RandomAccess 接口？
+
+一个**标记接口**（marker interface，**没有任何方法**），实现它表示容器**支持高效随机访问**——按下标 `get(i)` 是 O(1)。同思路的还有 Serializable、Cloneable：不定义行为，只"声明能力"。
+
+| 是否实现 | 类 | 原因 |
+|------|------|------|
+| 实现 | ArrayList、Vector、CopyOnWriteArrayList、Stack | 底层是数组，`get(i)` 直接算偏移 |
+| 未实现 | LinkedList | 底层是双向链表，`get(i)` 要从头遍历 O(n) |
+
+**意义**：让通用算法按容器类型选最优遍历策略。JDK 的 `Collections.binarySearch`、`reverse` 等源码都会先判断：
+
+```java
+if (list instanceof RandomAccess) {
+    for (int i = 0, n = list.size(); i < n; i++) { }   // 数组：按下标，O(n)
+} else {
+    for (var it = list.iterator(); it.hasNext(); ) { } // 链表：迭代器，避免 get(i) 累加成 O(n²)
+}
+```
+
 
 
 ## Set 如何保证元素不重复的？
 
 HashSet 底层就是 **HashMap**（元素作 key，value 是固定占位对象），add 即 put，靠 **hashCode + equals 双重判断**：
 
-```
-add(e) → hash 定位桶
-  桶为空     → 直接放入
-  桶不为空   → hash 相等 且（== 同引用 或 equals 相等）→ 判定重复，不插入
-```
-
-| 追问 | 答案 |
-|------|------|
-| 只重写 equals | 两个"相等"对象 hashCode 不同 → 落不同桶 → **判重失效** |
-| 只重写 hashCode | 落同桶但 equals 为 false → 仍被当成不同元素 |
-| TreeSet 呢 | 不用 hashCode/equals，靠 **compareTo/compare 返回 0** 判重（比较相等即重复） |
-
-
 
 ## 什么是 hashCode？
 
 `Object` 的 native 方法，返回一个 int 哈希码，把任意对象映射成一个整数，**确定该对象在哈希表中的索引位置**，可用于哈希容器（HashMap/HashSet）分桶定位的依据。
 
-**提示**：hashCode 的筛选逻辑与**布隆过滤器**同构：**hashCode 不相等 → 对象一定不相等**（直接排除，不用比 equals）；**hashCode 相等 → 可能相等**（哈希冲突，再用 equals 复核）
 
-
-
+> [!TIP]
+> hashCode 的筛选逻辑与**布隆过滤器**同构：**hashCode 不相等 → 对象一定不相等**（直接排除，不用比 equals）；**hashCode 相等 → 可能相等**（哈希冲突，再用 equals 复核）
 
 
 ## HashMap 和 HashTable 的区别？
@@ -182,6 +165,19 @@ add(e) → hash 定位桶
 | 性能 | 高（无锁） | 差（全表锁，竞争激烈时排队） |
 | 出现版本 | JDK 1.2 | JDK 1.0 |
 | 替代 | 并发用 ConcurrentHashMap | 已淘汰 |
+
+
+
+## 什么是 fail-fast 和 fail-safe？
+
+迭代器遍历过程中，容器**结构被修改**（增/删元素）时的两种行为策略。
+
+| 对比 | fail-fast（快速失败） | fail-safe（安全失败） |
+|------|------|------|
+| 行为 | 检测到修改立刻抛 **ConcurrentModificationException** | 不抛异常，继续遍历 |
+| 原理 | **modCount 计数**：迭代器创建时记下 expectedModCount，每次 `next()` 比对，不一致即抛 | 不直接在原容器上迭代：**COW 快照**（CopyOnWriteArrayList 遍历写时复制的数组）或**弱一致**（ConcurrentHashMap 容忍并发修改） |
+| 代表 | ArrayList、HashMap 等普通容器 | ConcurrentHashMap、CopyOnWriteArrayList、ConcurrentLinkedQueue |
+| 代价 | 只是**尽力检测**，并发下 modCount 判断本身非原子，不保证一定抛 | 遍历到的可能不是最新数据；COW 每次写要复制整个数组 |
 
 
 
