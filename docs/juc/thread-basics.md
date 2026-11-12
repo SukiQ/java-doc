@@ -184,32 +184,15 @@ synchronized (lock) {
 Thread.sleep(1000);               // 当前线程睡 1s，锁不释放
 ```
 
-### 常见误区
+> [!IMPORTANT]
+> wait 必须在 synchronized 内、且是同一把锁的对象上调用，这是为了避免丢失唤醒问题，
 
-| 误区 | 正解 |
-|------|------|
-| "sleep 也会释放锁" | ❌ sleep 不释放任何锁，抱着锁睡 |
-| "wait 可以在任意地方调用" | ❌ 必须在 synchronized 内、且是同一把锁的对象上调用 |
-| "wait 用 if 判断条件" | ⚠️ 应用 `while`，防止虚假唤醒和条件再次变化 |
-| "notify 能精确唤醒某个线程" | ❌ notify 随机唤醒一个，无法指定；需要精确唤醒用 `Condition` |
 
 ### 与线程状态的关系
 
 - `wait()` → WAITING；`wait(timeout)` → TIMED_WAITING
 - `sleep(ms)` → TIMED_WAITING
 - 详见 [线程的生命周期](#描述线程的生命周期)
-
-### 总结
-
-```
-wait：Object 的方法，释放锁，需 synchronized，用于线程协作
-sleep：Thread 的方法，不释放锁，随时可用，用于延时
-一句话：wait 是"让出锁等通知"，sleep 是"抱着锁睡一会"
-```
-
-要点小结：是否释放锁（核心差异）、wait 为什么在 Object、wait 必须在 synchronized 内、while 防虚假唤醒。
-
-
 
 
 
@@ -219,15 +202,6 @@ sleep：Thread 的方法，不释放锁，随时可用，用于延时
 ThreadLocal 提供线程本地变量：每个线程一份副本，线程之间互不干扰。
 
 ### 数据结构
-
-```
-Thread
-  └── threadLocals（ThreadLocalMap）
-        └── Entry[]（数组，开放寻址解决冲突）
-              └── Entry extends WeakReference<ThreadLocal<?>>
-                    ├── key：ThreadLocal 对象（弱引用）
-                    └── value：线程变量值（强引用）
-```
 
 - 每个线程内部有一个自己的 `ThreadLocalMap`，ThreadLocal 对象本身只是 key
 - 数据存在**线程**上，而不是 ThreadLocal 里
@@ -288,16 +262,6 @@ try {
 | `TransmittableThreadLocal`（阿里 TTL） | 解决线程池场景：值在线程间传递（池化线程复用后仍拿到提交者的上下文），配合 TtlRunnable/TtlCallable |
 | `ScopedValue`（JDK 21） | 不可变、绑定作用域，虚拟线程时代替代 ThreadLocal |
 
-### 总结
-
-```
-结构：Thread → ThreadLocalMap → Entry(key 弱引用, value 强引用)
-泄漏条件：key 被 GC + 线程长期存活 + 之后不再 get/set/remove
-自救：弱引用让 key=null，方法调用时顺手清理过期 Entry
-习惯：线程池场景用完必须 remove()
-```
-
-要点小结：数据存在线程上而非 ThreadLocal、key 弱引用 value 强引用、泄漏根源是线程池长生命周期、remove() 习惯、TTL 解决池化传递。
 
 ## 描述线程的生命周期
 
@@ -348,11 +312,3 @@ NEW → RUNNABLE ──→ BLOCKED ──→ RUNNABLE         │
 #### → TERMINATED
 
 - `run()` 正常结束或抛出未捕获异常
-
-### 易混点
-
-| 对比 | BLOCKED | WAITING |
-|------|---------|---------|
-| 触发 | `synchronized` 锁竞争 | `wait()` / `park()` / `LockSupport` |
-| 是否持有锁 | 未持有（等锁） | `wait()` 已释放锁；`park()` 不涉及锁 |
-| `Lock` 实现 | 不会进 BLOCKED | `ReentrantLock` 等待时进 WAITING |
