@@ -11,22 +11,13 @@ title: 线程池
 
 ### 预置线程池
 
-| 线程池 | 工厂方法 | 特点 | 适用场景 |
-|--------|----------|------|----------|
-| **FixedThreadPool** | `Executors.newFixedThreadPool(n)` | 固定线程数，无界队列（`LinkedBlockingQueue`） | 负载较重的服务器，限制并发线程数 |
-| **SingleThreadExecutor** | `Executors.newSingleThreadExecutor()` | 单线程，无界队列，保证顺序执行 | 串行任务、需要保证顺序的场景 |
-| **CachedThreadPool** | `Executors.newCachedThreadPool()` | 核心线程 0，最大线程 Integer.MAX_VALUE，60s 空闲回收 | 大量短任务，IO 密集型 |
-| **ScheduledThreadPool** | `Executors.newScheduledThreadPool(n)` | 支持定时和周期任务（`DelayedWorkQueue`） | 定时任务、周期任务 |
-| **WorkStealingPool** | `Executors.newWorkStealingPool()` | ForkJoinPool 实现，每个线程有自己的队列，空闲时窃取其他线程任务 | 递归/分治任务、CPU 密集型 |
-
-### 为什么生产环境不推荐 Executors？
-
-| 线程池 | 风险 | 原因 |
-|--------|------|------|
-| FixedThreadPool | OOM | `LinkedBlockingQueue` 无界，堆积任务可能耗尽内存 |
-| SingleThreadExecutor | OOM | 同上，无界队列 |
-| CachedThreadPool | OOM | 最大线程数 `Integer.MAX_VALUE`，可能创建大量线程耗尽资源 |
-| ScheduledThreadPool | OOM | `DelayedWorkQueue` 最大容量 Integer.MAX_VALUE |
+| 线程池 | 特点                                                               | 适用场景 |
+|--------|--------------------------------------------------------------------|----------|
+| **FixedThreadPool** | 固定线程数，无界队列（`LinkedBlockingQueue`）                      | 负载较重的服务器，限制并发线程数 |
+| **SingleThreadExecutor** | 单线程，无界队列（`LinkedBlockingQueue`），保证顺序执行            | 串行任务、需要保证顺序的场景 |
+| **CachedThreadPool** | 核心线程 0，最大线程 Integer.MAX_VALUE，60s 空闲回收，同步队列（`SynchronousQueue`） | 大量短任务，IO 密集型 |
+| **ScheduledThreadPool** | 支持定时和周期任务（`DelayedWorkQueue`）                           | 定时任务、周期任务 |
+| **WorkStealingPool** | ForkJoinPool 实现，每个线程有自己的队列，空闲时窃取其他线程任务    | 递归/分治任务、CPU 密集型 |
 
 ### 用 ThreadPoolExecutor 自定义
 
@@ -63,20 +54,17 @@ public ThreadPoolExecutor(
 
 ### 任务提交流程
 
-```
-提交任务
-  │
-  ▼
-线程数 < corePoolSize？──是──→ 创建核心线程执行
-  │ 否
-  ▼
-任务队列未满？──是──→ 入队等待
-  │ 否
-  ▼
-线程数 < maximumPoolSize？──是──→ 创建非核心线程执行
-  │ 否
-  ▼
-触发拒绝策略
+```mermaid
+flowchart LR
+    A[提交任务] --> B["线程数 &lt; corePoolSize？"]
+    B -->|是| C[创建核心线程执行]
+    B -->|否| D["任务队列未满？"]
+    D -->|是| E[入队等待]
+    D -->|否| F["线程数 &lt; maximumPoolSize？"]
+    F -->|是| G[创建非核心线程执行]
+    F -->|否| H[触发拒绝策略]
+    classDef cond stroke-dasharray:5 4
+    class B,D,F cond
 ```
 
 ### 总结
@@ -145,8 +133,6 @@ public ThreadPoolExecutor(
 // ThreadPoolExecutor 提供的动态方法
 executor.setCorePoolSize(newCore);
 executor.setMaximumPoolSize(newMax);
-
-// 美团实践：参数中心 + 监控告警，动态推送调整
 ```
 
 配合监控指标：
@@ -159,18 +145,14 @@ executor.setMaximumPoolSize(newMax);
 
 ### 调优流程
 
-```
-1. 确定任务类型（CPU/IO 密集）
-      ↓
-2. 按公式设初始线程数
-      ↓
-3. 选有界队列，估算容量
-      ↓
-4. 压测，观察吞吐 + 响应时间 + 拒绝率
-      ↓
-5. 微调参数，重复压测直到达标
-      ↓
-6. 接入监控，支持运行时动态调整
+```mermaid
+flowchart LR
+    S1[确定任务类型<br/>CPU / IO 密集] --> S2[按公式设初始线程数]
+    S2 --> S3[选有界队列<br/>估算容量]
+    S3 --> S4[压测<br/>吞吐 / 响应 / 拒绝率]
+    S4 --> S5{达标？}
+    S5 -->|否，微调参数| S4
+    S5 -->|是| S6[接入监控<br/>运行时动态调整]
 ```
 
 
@@ -191,20 +173,17 @@ executor.setMaximumPoolSize(newMax);
 
 ### 创建与回收逻辑
 
-```
-任务到来
-  │
-  ▼
-线程数 < corePoolSize？──是──→ 创建核心线程
-  │ 否
-  ▼
-队列未满？──是──→ 入队等待
-  │ 否
-  ▼
-线程数 < maximumPoolSize？──是──→ 创建临时线程
-  │ 否
-  ▼
-触发拒绝策略
+```mermaid
+flowchart LR
+    A[任务到来] --> B["线程数 &lt; corePoolSize？"]
+    B -->|是| C[创建核心线程]
+    B -->|否| D["队列未满？"]
+    D -->|是| E[入队等待]
+    D -->|否| F["线程数 &lt; maximumPoolSize？"]
+    F -->|是| G[创建临时线程]
+    F -->|否| H[触发拒绝策略]
+    classDef cond stroke-dasharray:5 4
+    class B,D,F cond
 ```
 
 关键点：**临时线程不是核心线程的替补，而是队列满后的溢出处理**。只有队列放不下时才会创建。
@@ -218,21 +197,3 @@ executor.setMaximumPoolSize(newMax);
 ```java
 executor.allowCoreThreadTimeOut(true);  // 核心线程也超时回收
 ```
-
-### 常见误区
-
-| 误区 | 正解 |
-|------|------|
-| "核心线程忙了才创建临时线程" | ❌ 队列满了才创建，不是核心线程满了就创建 |
-| "临时线程优先级低" | ❌ 所有线程平等，只是创建和回收策略不同 |
-| "核心线程不会被回收" | ❌ 开启 `allowCoreThreadTimeOut` 后一样回收 |
-| "corePoolSize = 0 时不创建线程" | ❌ 会创建临时线程执行任务（队列满后） |
-
-### 总结
-
-```
-核心线程：先创建，默认不回收，承担常规负载
-临时线程：队列满后创建，空闲超时回收，应对突发流量
-```
-
-要点小结：创建时机的优先级（核心 → 队列 → 临时 → 拒绝）、临时线程的回收机制、`allowCoreThreadTimeOut` 的作用。

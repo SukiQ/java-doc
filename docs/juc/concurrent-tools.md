@@ -5,21 +5,35 @@ title: 并发工具
 # 并发工具
 
 
-## CountDownLatch、CyclicBarrier、Semaphore 的区别？
+## JUC 同步工具怎么选？
 
-三者都是基于 AQS 的共享模式工具，语义不同：
+CountDownLatch、Semaphore 基于 AQS 共享模式实现；CyclicBarrier 基于 ReentrantLock + Condition；Phaser、Exchanger 是专有实现。语义各异，按场景选：
 
-### 对比
+| 工具 | 语义 | 可重用 | 谁阻塞 | 典型场景 |
+|------|------|--------|--------|----------|
+| CountDownLatch | 倒计时门闩，减到 0 放行 | ❌ 一次性 | 等的人阻塞（主线程 await） | 主线程等 N 个子任务完成 |
+| CyclicBarrier | 人齐开会，到指定数放行 | ✅ 自动重置 | 参与的人互相等 | N 个线程同步到某点再一起走 |
+| Phaser | 分阶段屏障，逐 phase 推进 | ✅ 每阶段自动进入下一轮 | 参与者每阶段互相等 | 多阶段任务、参与方动态变化 |
+| Semaphore | 许可证，可增可减 | ✅ 持续使用 | 抢不到许可的阻塞 | 限流，限制并发数 |
+| Exchanger | 两线程汇合点交换数据 | ✅ 持续使用 | 先到的一方等另一方 | 生产者-消费者交换缓冲区 |
 
-| 对比项 | CountDownLatch | CyclicBarrier | Semaphore |
-|--------|----------------|---------------|-----------|
-| 语义 | 倒计时门闩 | 人齐开会 | 许可证 |
-| 计数方向 | 只减不增，减到 0 放行 | 到达指定数放行 | 可增可减（acquire/release） |
-| 可重用 | ❌ 一次性，不可重置 | ✅ 自动重置，可循环用 | ✅ 持续使用 |
-| 谁阻塞 | **等的人阻塞**（主线程 await） | **参与的人互相等**（都到齐才继续） | 抢不到许可的阻塞 |
-| 场景 | 主线程等 N 个子任务完成 | N 个线程同步到某个点再一起走 | 限流，限制并发数 |
+### 选型
 
-### CountDownLatch
+```
+等别人干完活        → CountDownLatch（一次性）
+多人同步起跑        → CyclicBarrier（单阶段可循环）
+多阶段推进/动态人数 → Phaser
+限制并发数          → Semaphore（持续限流）
+两个线程交换数据    → Exchanger
+```
+
+要点小结：语义差异（一次性 / 可循环 / 分阶段 / 许可制 / 两两交换）、谁在阻塞、可否重用、典型场景。
+
+
+
+## CountDownLatch：倒计时门闩
+
+计数只减不增，减到 0 放行所有 await 的线程。
 
 ```java
 CountDownLatch latch = new CountDownLatch(3);
@@ -38,8 +52,13 @@ System.out.println("all done");
 
 - 一次性：归零后不能重置；想复用要新建对象
 - await 支持超时重载
+- countDown() 不阻塞，可以由子任务自己减
 
-### CyclicBarrier
+
+
+## CyclicBarrier：可循环的屏障
+
+N 个线程互相等，到齐后一起放行，屏障自动重置进入下一轮。
 
 ```java
 CyclicBarrier barrier = new CyclicBarrier(3,
@@ -59,7 +78,34 @@ for (int i = 0; i < 3; i++) {
 - 放行后**自动重置**，可循环使用（"Cyclic" 的含义）
 - 一个线程中断/超时会抛 `BrokenBarrierException`，屏障失效
 
-### Semaphore
+
+
+## Phaser：分阶段的屏障
+
+CyclicBarrier 的强化版：把"到齐放行"组织成多个阶段（phase），且参与方可动态增减。
+
+```java
+Phaser phaser = new Phaser(3);          // 注册 3 个参与方
+
+for (int i = 0; i < 3; i++) {
+    new Thread(() -> {
+        doPhase1Work();
+        phaser.arriveAndAwaitAdvance(); // 阶段 1：等大家都完成再继续
+        doPhase2Work();
+        phaser.arriveAndAwaitAdvance(); // 阶段 2：同样到齐才走
+    }).start();
+}
+```
+
+- 不必预先知道线程数：`register()` / `arriveAndDeregister()` 运行中增减参与方
+- 三个到达方法：`arrive()`（到达不等待）、`arriveAndAwaitAdvance()`（到齐等下一阶段）、`arriveAndDeregister()`（干完退场）
+- 重写 `onAdvance(phase, registeredParties)` 在每阶段切换时回调，返回 true 终止 Phaser
+- 支持分层（构造时传 parent Phaser），降低高并发下的单点竞争
+- 场景：迭代算法每轮同步、分阶段并行任务、参与线程数不确定的场景
+
+
+
+## Semaphore：许可证限流
 
 ```java
 Semaphore permits = new Semaphore(10);  // 10 个许可
@@ -77,15 +123,35 @@ void accessResource() throws InterruptedException {
 - 限流：最多 10 个线程同时访问（如数据库连接池、接口限并发）
 - release 可以不配对 acquire（可增发许可）；公平模式可选
 
-### 选型
 
-```
-等别人干完活 → CountDownLatch（一次性）
-多人同步起跑 → CyclicBarrier（可循环）
-限制并发数   → Semaphore（持续限流）
+
+## Exchanger：两线程交换数据
+
+两个线程在汇合点交换各自持有的数据，`exchange()` 阻塞直到对方到达。
+
+```java
+Exchanger<Buffer> exchanger = new Exchanger<>();
+
+new Thread(() -> {                       // 生产者
+    Buffer buffer = new Buffer();
+    while (true) {
+        fillBuffer(buffer);              // 装数据
+        buffer = exchanger.exchange(buffer);  // 满缓冲区换对方的空缓冲区
+    }
+}).start();
+
+new Thread(() -> {                       // 消费者
+    Buffer buffer = new Buffer();
+    while (true) {
+        consume(buffer);                 // 清空
+        buffer = exchanger.exchange(buffer);  // 空的换回满的
+    }
+}).start();
 ```
 
-要点小结：三者语义差异（一次性/可循环/许可制）、谁阻塞的区别、典型场景、CyclicBarrier 的自动重置与 BrokenBarrier。
+- 只支持两方成对交换；多个线程同时 exchange 时会两两配对
+- 支持超时：`exchange(data, timeout, unit)`
+- 场景：生产者-消费者交换缓冲区、两个线程交换中间结果
 
 
 

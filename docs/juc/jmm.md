@@ -145,14 +145,3 @@ volatile 写 = x  ┘
 | synchronized | monitor enter/exit 隐含屏障（lock 前缀指令） |
 | CAS（Atomic 类） | `lock cmpxchg` 指令自带全屏障效果 |
 | final 字段安全 | 构造函数结束时的 StoreStore 屏障 |
-
-### 总结
-
-```
-内存屏障 = CPU 指令
-作用：禁止重排序 + 强制缓存同步
-四种：LoadLoad / StoreStore / LoadStore / StoreLoad
-应用：volatile、synchronized、CAS 的底层实现
-```
-
-要点小结：屏障的两种作用（禁重排 + 缓存同步）、四种屏障类型、volatile 的屏障插入策略。

@@ -91,17 +91,6 @@ where id = 1 and version = #{oldVersion};
 -- 影响行数为 0 说明被改过，重试或报错
 ```
 
-### 总结
-
-```
-悲观锁：认为冲突多，先加锁（synchronized / Lock / 行锁）
-乐观锁：认为冲突少，提交时校验（CAS / 版本号）
-选择：写多冲突高 → 悲观；读多冲突低 → 乐观
-```
-
-要点小结：两种思想的假设差异、CAS 原理与三大问题（ABA/自旋/单变量）、数据库乐观锁的版本号实现。
-
-
 
 ## synchronized 的锁升级过程？
 
@@ -124,8 +113,11 @@ JDK 6 优化了 synchronized：锁并非一开始就是重量级，而是随竞�
 - **场景**：锁始终只被一个线程访问，无竞争
 - **原理**：第一次获取时 CAS 把线程 ID 写入 Mark Word，之后该线程进入同步块**无需任何同步操作**（连 CAS 都省了）
 - 其他线程来竞争时，偏向锁撤销（等到全局安全点），升级为轻量级锁
-- ⚠️ JDK 15 起默认禁用（JEP 374）：维护成本高、现代应用多为多线程交替，收益小
 - 参数：`-XX:+UseBiasedLocking`（JDK 15 前默认开启）
+
+::: danger
+JDK 15 起默认禁用（JEP 374）：维护成本高、现代应用多为多线程交替，收益小
+:::
 
 ### 轻量级锁
 
@@ -146,17 +138,11 @@ JDK 6 优化了 synchronized：锁并非一开始就是重量级，而是随竞�
 
 ### 升级流程
 
-```
-无锁
-  │ 第一个线程访问，CAS 写入线程 ID
-  ▼
-偏向锁（只有这一个线程反复进出，零成本）
-  │ 第二个线程参与竞争
-  ▼
-轻量级锁（交替执行，CAS + 自旋）
-  │ 自旋失败（竞争激烈/长时间拿不到）
-  ▼
-重量级锁（monitor，阻塞挂起）
+```mermaid
+flowchart LR
+    A[无锁] -->|首次访问，CAS 写入线程 ID| B[偏向锁<br/>单线程反复进出，零成本]
+    B -->|第二个线程参与竞争| C[轻量级锁<br/>交替执行，CAS + 自旋]
+    C -->|自旋失败，竞争激烈| D[重量级锁<br/>monitor，阻塞挂起]
 ```
 
 - 升级是**单向**的，不能降级（避免降级时的混乱和开销）
@@ -184,18 +170,6 @@ for (int i = 0; i < 100; i++) {
     sb.append(i);
 }
 ```
-
-### 总结
-
-```
-偏向锁：单线程重复获取，记线程 ID，零成本（JDK 15 废弃）
-轻量级锁：交替执行，栈中 Lock Record + CAS 自旋
-重量级锁：激烈竞争，monitor + 阻塞挂起
-方向：只升不降，绝大多数锁停在轻量级以下
-```
-
-要点小结：四级升级顺序与触发条件、Mark Word 各状态存什么、只能升级不能降级、自适应自旋/锁消除/锁粗化。
-
 
 
 ## 谈谈 ReentrantLock
@@ -275,97 +249,33 @@ CLH 变体双向队列              → 抢锁失败的线程入队挂起（park
 | 锁升级 | 偏向/轻量/重量级 | 无（固定 AQS 逻辑） |
 | 使用建议 | 默认首选，简单安全 | 需要高级特性时用 |
 
-### 总结
-
-```
-ReentrantLock = AQS 实现的可重入锁
-优势：公平 / 可中断 / 超时 / tryLock / 多 Condition
-代价：手动 unlock，写错死锁
-选型：无特殊需求用 synchronized，需要高级特性才用 ReentrantLock
-```
-
-要点小结：与 synchronized 的差异、五大高级特性、公平/非公平区别、AQS 的 state + CLH 队列原理。
-
-
-
-
 
 
 ## AQS 是什么？
 
-AQS（AbstractQueuedSynchronizer）是 JUC 的**同步器基石**，ReentrantLock、Semaphore、CountDownLatch 等都基于它实现。核心 = **一个 state + 一条等待队列 + 模板方法**。
+AQS（AbstractQueuedSynchronizer）是 JUC 的**同步器基石**，解决的问题是：**多线程竞争同一资源时，抢不到的线程如何排队、挂起、被唤醒**。ReentrantLock、Semaphore、CountDownLatch、读写锁都基于它实现。
 
-### 三大核心
+AQS中维护了一个信号量（**state**）和一个双向链表队列，这个队列用于线程的排队，而 state 就是红绿灯，用于控制线程排队和放行
 
-```
-state（volatile int）        → 同步状态，含义由子类定义
-exclusiveOwnerThread         → 独占模式下持有同步器的线程
-CLH 变体双向队列             → 获取失败的线程入队，LockSupport.park() 挂起
-```
+### 独占与共享
 
-| state 的含义 | 实现类 |
-|--------------|--------|
-| 0 无锁 / >0 重入次数 | ReentrantLock |
-| 高16位读锁数 / 低16位写锁重入 | ReentrantReadWriteLock |
-| 剩余许可数 | Semaphore |
-| 计数值（减到 0 放行） | CountDownLatch |
+AQS 支持两种资源共享方式：
 
-### 加锁/释放骨架
+| 模式 | 入口方法 | 语义 | 代表                                                      |
+|------|----------|------|-----------------------------------------------------------|
+| **独占** | acquire / release | 同一时刻至多一个线程通过 | ReentrantLock、ReentrantReadWriteLock中的写锁             |
+| **共享** | acquireShared / releaseShared | 多个线程可同时通过，释放时向后传播唤醒 | Semaphore、ReentrantReadWriteLock中的读锁、CountDownLatch |
 
-```
-acquire（独占获取）：
-  tryAcquire() ──成功──→ 返回
-      │ 失败
-      ▼
-  addWaiter() 入队 → 前驱是头节点时再试一次
-      │ 仍失败
-      ▼
-  park() 挂起，等前驱释放后 unpark 唤醒
 
-release（独占释放）：
-  tryRelease() → state 归零 → unpark 唤醒后继节点
-```
+### 不同的 state 含义
 
-- state 的修改用 **CAS** 保证原子
-- 队列节点有 waitStatus（SIGNAL：释放时需要唤醒后继）
-
-### 两种模式
-
-| 模式 | 方法 | 含义 | 代表 |
-|------|------|------|------|
-| **独占（Exclusive）** | acquire / release | 同一时刻一个线程 | ReentrantLock、写锁 |
-| **共享（Shared）** | acquireShared / releaseShared | 多线程可同时通过 | Semaphore、读锁、CountDownLatch |
-
-### 模板方法设计
-
-AQS 把"排队、挂起、唤醒"这些通用逻辑写死，把"怎么算获取成功"留给子类：
-
-```java
-// 子类只需重写（ReentrantLock 的实现为例）
-protected boolean tryAcquire(int acquires) { /* CAS state，重入判断 */ }
-protected boolean tryRelease(int releases) { /* state 递减 */ }
-// Semaphore 重写 tryAcquireShared：state(cas) 减 1，减完还有余量就成功
-```
-
-### 基于 AQS 的类
-
-| 类 | 模式 |
-|----|------|
-| ReentrantLock | 独占 |
-| ReentrantReadWriteLock | 读共享 + 写独占 |
-| Semaphore | 共享 |
-| CountDownLatch | 共享 |
-| ThreadPoolExecutor 的 Worker | 独占（简化版，不可重入） |
-
-### 总结
-
-```
-AQS = volatile state + CLH 队列 + park/unpark
-通用逻辑（排队挂起）父类写死，state 语义（怎么算抢到）子类定义
-一套骨架支撑了 Lock、Semaphore、Latch、读写锁
-```
-
-要点小结：state 的多义性、CLH 队列 + park 的挂起唤醒、独占/共享两种模式、模板方法设计、哪些类基于它。
+| 实现类 | 模式 | state 的含义 |
+|--------|------|--------------|
+| ReentrantLock | 独占 | 0 无锁 / >0 重入次数 |
+| ReentrantReadWriteLock | 读共享 + 写独占 | 高 16 位读锁数 / 低 16 位写锁重入 |
+| Semaphore | 共享 | 剩余许可数 |
+| CountDownLatch | 共享 | 计数值，减到 0 放行 |
+| ThreadPoolExecutor 的 Worker | 独占（简化、不可重入） | 0 / 1 |
 
 ## 公平锁和非公平锁的区别？
 
@@ -388,20 +298,25 @@ new ReentrantLock();       // 默认非公平
 
 唯一区别在**加锁入口是否先抢一次**：
 
-```
-非公平锁 lock()：
-  先 CAS 尝试改 state ──成功──→ 直接获得锁（插队）
-        │ 失败
-        ▼
-  acquire() → tryAcquire()
-      → 再次直接 CAS 抢一次（队列头也抢）
-      → 失败才入队挂起
+**非公平锁 lock()**
 
-公平锁 lock()：
-  acquire() → tryAcquire()
-      → 先检查 hasQueuedPredecessors()（队列里有没有排队的）
-      → 有排队者 → 不抢，乖乖入队
-      → 没有排队者 → CAS 获取
+```mermaid
+flowchart LR
+    N1["先 CAS 尝试改 state"] -->|成功| N2[直接获得锁，插队]
+    N1 -->|失败| N3["acquire → tryAcquire<br/>再次 CAS 抢一次"]
+    N3 -->|成功| N2
+    N3 -->|失败| N4[入队挂起]
+```
+
+**公平锁 lock()**
+
+```mermaid
+flowchart LR
+    F1["acquire → tryAcquire"] --> F2["hasQueuedPredecessors()<br/>队列里有没有排队者"]
+    F2 -->|有排队者| F3[不抢，乖乖入队]
+    F2 -->|没有排队者| F4[CAS 获取]
+    classDef cond stroke-dasharray:5 4
+    class F2 cond
 ```
 
 ### 为什么默认非公平？
@@ -442,16 +357,6 @@ new ReentrantLock();       // 默认非公平
 | `ReentrantReadWriteLock` | 构造参数可选 |
 | `Semaphore` / `CountDownLatch` 等基于 AQS 的工具 | 构造参数可选，默认非公平 |
 
-### 总结
-
-```
-公平：先检查队列再抢，FIFO，不饿死但吞吐低
-非公平：直接 CAS 抢，可插队，吞吐高但可能饥饿
-默认非公平的原因：插队成功省去线程唤醒开销，吞吐量更高
-```
-
-要点小结：定义差异、AQS 实现区别（hasQueuedPredecessors）、默认非公平的原因（省唤醒开销）、饥饿风险。
-
 
 
 ## 排他锁和共享锁的区别？
@@ -465,11 +370,6 @@ new ReentrantLock();       // 默认非公平
 | **排他锁**（Exclusive） | 写锁、X 锁 | 同一时刻仅 1 个线程 | 与所有锁互斥 |
 | **共享锁**（Shared） | 读锁、S 锁 | 可被多个线程同时持有 | 共享↔共享兼容；共享↔排他互斥 |
 
-```
-读 + 读  → ✅ 不阻塞
-读 + 写  → ❌ 互斥
-写 + 写  → ❌ 互斥
-```
 
 ### Java 中的实现
 
@@ -536,18 +436,6 @@ try { /* 修改数据 */ } finally { writeLock.unlock(); }
 
 - 公平模式的 ReadWriteLock（吞吐下降）
 - StampedLock 乐观读（读不加锁，写不再被读阻塞）
-
-### 总结
-
-```
-排他锁：独占，读写写全部互斥（ReentrantLock、写锁、for update）
-共享锁：多线程同持，仅与排他互斥（读锁、Semaphore、S 锁）
-AQS：state 高 16 位读锁计数、低 16 位写锁重入
-```
-
-要点小结：兼容矩阵、ReadWriteLock 的 state 拆分、写锁可降级/读锁不可升级、写饥饿与 StampedLock。
-
-
 
 ## 什么是死锁？如何排查和避免？
 
@@ -623,21 +511,3 @@ while (true) {
     sleep(random);   // 随机退避，避免活锁
 }
 ```
-
-### 相关：活锁与饥饿
-
-| 问题 | 说明 |
-|------|------|
-| **死锁** | 互相等待，全部卡死 |
-| **活锁** | 不断重试互相让路，谁也进不去（CPU 在跑但没进展） |
-| **饥饿** | 线程长期抢不到资源（如非公平锁下的弱者、低优先级线程） |
-
-### 总结
-
-```
-死锁四条件：互斥、持有并等待、不可剥夺、循环等待
-排查：jstack "Found deadlock" / Arthas thread -b
-避免：锁排序 + tryLock 超时 + 一次性申请 + 减小临界区
-```
-
-要点小结：四个必要条件、经典双锁互等代码、jstack/Arthas 排查、破坏条件的五种策略、tryLock 退避写法。

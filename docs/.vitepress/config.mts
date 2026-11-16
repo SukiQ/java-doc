@@ -105,7 +105,21 @@ export default withMermaid(
       ],
       outline: { level: [2, 3] }
     },
-    mermaid: {},
+    mermaid: {
+      theme: 'neutral',
+      htmlLabels: false,
+      themeVariables: {
+        fontSize: '13px',
+        fontFamily:
+          'ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+      },
+      flowchart: {
+        curve: 'linear',
+        nodeSpacing: 32,
+        rankSpacing: 40,
+        padding: 8,
+      },
+    },
     vite: {
       optimizeDeps: {
         include: ['mermaid'],
