@@ -26,19 +26,21 @@ EXPLAIN ANALYZE ...       -- 8.0.18+：真正执行并给出每步实际耗时/�
 
 ### 输出列总览
 
-| 列 | 说明 | 重要度 |
-|----|------|--------|
-| id | 执行顺序 | ⭐⭐ |
-| select_type | 查询类型 | ⭐ |
-| table | 当前行操作的表 | ⭐ |
-| type | **访问类型（索引使用情况）** | ⭐⭐⭐ |
-| possible_keys | 可能用到的索引 | ⭐ |
-| key | **实际用到的索引** | ⭐⭐⭐ |
-| key_len | 索引使用长度（判断用了复合索引几列） | ⭐⭐ |
-| ref | 与索引比较的列或常量 | ⭐ |
-| rows | **预估扫描行数** | ⭐⭐⭐ |
-| filtered | 过滤后剩余比例 | ⭐ |
-| Extra | **附加信息（filesort/temporary 等）** | ⭐⭐⭐ |
+![](/Users/huaxiaoqi/Pictures/15.png)
+
+| 列 | 说明 |
+|----|------|
+| id | 执行顺序 |
+| select_type | 查询类型 |
+| table | 当前行操作的表 |
+| type | **访问类型（索引使用情况）** |
+| possible_keys | 可能用到的索引 |
+| key | **实际用到的索引** |
+| key_len | 索引使用长度（判断用了复合索引几列） |
+| ref | 与索引比较的列或常量 |
+| rows | **预估扫描行数** |
+| filtered | 过滤后剩余比例 |
+| Extra | **附加信息（filesort/temporary 等）** |
 
 ### id：执行顺序
 
@@ -61,9 +63,13 @@ EXPLAIN ANALYZE ...       -- 8.0.18+：真正执行并给出每步实际耗时/�
 
 ```
 system > const > eq_ref > ref > range > index > ALL
-   优 ──────────────────────────────────────→ 差
-生产要求：至少 range 级别；ref 以上算健康；ALL 必须优化
+
 ```
+
+::: danger
+生产要求：至少 range 级别；ref 以上算健康；ALL 必须优化
+::: 
+
 
 | type | 含义 | 示例 |
 |------|------|------|
@@ -121,6 +127,8 @@ SELECT * FROM information_schema.OPTIMIZER_TRACE\G
 SET optimizer_trace = 'enabled=off';     -- 务必关闭，有性能开销
 ```
 
+![](/Users/huaxiaoqi/Pictures/16.png)
+
 JSON 关键字段：
 
 | 字段 | 含义 |
@@ -132,30 +140,9 @@ JSON 关键字段：
 
 典型用途：**explain 显示没走预期索引时**，用 trace 看优化器成本估算，判断是统计信息过旧（`analyze table`）还是索引成本确实不占优（`force index` 或改写 SQL）。
 
-### 典型优化信号
-
-```
-type = ALL                    → 加索引 / 改写条件
-key = NULL 且 rows 巨大        → 索引失效（函数、隐式转换、前导 %）
-Using filesort                → 排序列加索引（或按联合索引顺序 order by）
-Using temporary               → group by 列加索引
-Using join buffer             → 被驱动表连接列加索引；小表驱动大表
-```
-
-### 总结
-
-```
-explain：看计划（type / key / rows / Extra）
-explain analyze（8.0+）：计划 + 实际耗时
-trace：看优化器选索引的成本决策过程
-顺序：explain 定位 → 索引没按预期走时用 trace 挖原因
-```
-
-要点小结：type 等级顺序及 ALL/range/ref 的含义、key_len 判断复合索引用几列、filesort 与 temporary 的成因和优化方向、trace 的开关流程与适用场景。
 
 ## 常见的 SQL 优化点有哪些？
 
-逐条列出高频优化点，每条都是「问题 → ❌/✅ 对比」。
 
 ### 用覆盖索引，避免 select *
 
@@ -191,21 +178,6 @@ where phone = 13800000000 -- ✅ where phone = '13800000000'
 where name like '%abc'    -- ✅ where name like 'abc%'
 -- ❌ 不等于 / not in / is not null（大概率放弃索引）
 where status != 1         -- ✅ 改写为 status in (0, 2) 或拆分查询
-```
-
-### 深分页用延迟关联或游标
-
-```sql
--- ❌ limit 1000000, 10：先扫描 1000010 行再丢弃前 100 万
-select * from orders order by id limit 1000000, 10;
-
--- ✅ 延迟关联：先用覆盖索引拿 10 个主键，再回表 10 行
-select * from orders t
-join (select id from orders order by id limit 1000000, 10) tmp
-on t.id = tmp.id;
-
--- ✅ 游标（记住上次位置，适合连续翻页）
-select * from orders where id > 1000000 order by id limit 10;
 ```
 
 ### 小表驱动大表
@@ -256,15 +228,6 @@ select count(*) from orders;
 -- ⚠️ count(name)：要判断每行 name 是否为 NULL，最慢
 ```
 
-### 总结
-
-```
-写法层：覆盖索引、避免索引失效、union all、count(*)
-索引层：最左前缀、等值在前范围在后
-数据量层：深分页延迟关联、小表驱动、批量操作、join 限 3 表
-```
-
-要点小结：索引失效的五种写法、深分页两种方案、in 与 exists 的选择依据。
 
 
 
@@ -401,17 +364,6 @@ select * from orders where id >= 1000000 order by id limit 10;
 | 延迟关联 | O(offset + n)（扫瘦索引） | ✅ | 排序列有索引 |
 | 业务限制 | - | - | 产品配合 |
 
-### 总结
-
-```
-limit 慢的本质：offset 是扫描后丢弃，不是跳过
-连续翻页 → 游标（where id > 上次边界）
-必须跳页 → 延迟关联（覆盖索引拿 id 再回表）
-最好 → 业务限制翻页深度
-```
-
-要点小结：limit offset 的执行本质、游标分页的适用与限制、延迟关联为什么快（回表次数从 offset+n 降到 n）。
-
 
 
 ## 慢查询如何定位？
@@ -441,6 +393,7 @@ set global long_query_time = 1;
 -- 记录全表扫描的 SQL（即使没超时）
 set global log_queries_not_using_indexes = on;
 ```
+![](/Users/huaxiaoqi/Pictures/17.png)
 
 日志分析工具：`mysqldumpslow`（自带）、`pt-query-digest`（更详细，按指纹聚合）。
 
@@ -463,17 +416,6 @@ show profile for query 1;         -- 查看各阶段耗时
 | IO 高 | buffer pool 命中率低（`innodb_buffer_pool_read_requests` 与 reads 之比） |
 | 大量锁等待 | `select * from performance_schema.data_lock_waits`、`show engine innodb status` |
 | 连接堆积 | `show processlist`，慢 SQL 拖住连接池 |
-
-### 总结
-
-```
-入口：慢日志抓 SQL（long_query_time）
-分析：explain 看计划 → profile 看耗时分布
-区分：SQL 自身慢（索引/写法）vs 系统慢（IO/锁/连接）
-```
-
-要点小结：慢日志关键参数、定位流程、profile 各阶段含义、buffer pool 命中率判断。
-
 
 
 ## delete、truncate、drop 的区别？
@@ -500,16 +442,6 @@ drop table t;                                     -- 连表结构一起删
 - delete 误删：binlog（ROW 格式）反向生成 insert 恢复
 - truncate/drop：需延时备份、binlog 全量重放到误删前，或用闪回工具（binlog2sql）
 - 兜底：定期全量备份 + 实时 binlog
-
-### 总结
-
-```
-delete：DML，条件删，慢，可回滚
-truncate：DDL，清空表，快，不可回滚，重置自增
-drop：DDL，删表结构+数据，不可回滚
-```
-
-要点小结：DML 与 DDL 的本质区别、回滚能力的由来（是否走 undo log）、误删数据的三种恢复手段。
 
 
 
@@ -556,15 +488,6 @@ alter table t add column remark varchar(100),
 4. 主从架构：先从后主，控制复制延迟
 ```
 
-### 总结
-
-```
-8.0 加列 INSTANT、加索引 INPLACE，基本在线
-改列类型只能 COPY 锁表 → 用 gh-ost 影子表方案
-原则：低峰 + 演练 + 留磁盘 + 控延迟
-```
-
-要点小结：三种 algorithm 的区别、gh-ost/pt-osc 的影子表原理、主从架构下的 DDL 顺序。
 
 ## MySQL 执行 delete 后为什么磁盘空间不释放？
 
@@ -638,33 +561,6 @@ alter table t add column remark varchar(100),
 - 相关参数：`index_condition_pushdown`（默认开启）
 
 
-
-
-## 深分页如何性能优化？
-
-问题本质：`limit 1000000, 10` 是**扫描 100 万行后丢弃**，offset 越大越慢。
-
-### 四种方案
-
-| 方案 | 做法 | 特点 |
-|------|------|------|
-| **游标分页**（键集分页） | `where id > 上页边界 order by id limit 10` | 扫描量恒定 O(n)，**最优**；只能连续翻页，不能跳 |
-| **延迟关联** | 子查询用覆盖索引只取 10 个主键，再回表 | 支持跳页；仍扫索引但只回表 10 次 |
-| **条件定位** | 页面带真实边界 id，`where id >= start limit 10` | 与游标等价 |
-| **业务限制** | 限制可翻页深度（如最多 100 页） | 产品层规避 |
-
-### 选型
-
-```
-连续翻页（信息流、滚动加载）→ 游标分页
-必须跳页 → 延迟关联
-最优解 → 业务上限制翻页深度
-```
-
-**注**：对应 SQL 优化点里的简版，此处展开：核心都是**让排序过滤在索引上完成**，把"扫描+丢弃"变成"定位+返回"。
-
-
-
 ## MySQL 中 count(1)、count(*) 与 count(列名) 的区别？
 
 ### 语义差异（先分清）
@@ -701,5 +597,3 @@ alter table t add column remark varchar(100),
 | 计数表 | 单独维护一张计数表，增删改时同事务更新（精确） |
 | explain 估算 | `explain` 的 rows 字段近似值（允许误差的场景） |
 | Redis 计数 | 计数与落库一致性要自己保证（对账兜底） |
-
-**注**：结论一句话：**数行数用 count(*)（官方优化最好），count(列) 是另一个语义（非 NULL 计数）别混用**；大表精确计数靠计数表，允许误差用估算。
