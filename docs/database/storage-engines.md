@@ -30,17 +30,6 @@ title: 存储引擎
 - 5.5 前默认引擎；现在基本弃用
 - 了解它主要为了回答"为什么 InnoDB 是聚簇索引、MyISAM 不是"：MyISAM 索引与数据分离，二级索引与主索引结构相同（都存地址）
 
-### 总结
-
-```
-InnoDB：事务 + 行锁 + 聚簇 + 崩溃恢复，互联网标配
-MyISAM：表锁、非聚簇、count 快，已淘汰
-8.0 已彻底移除 MyISAM 作为系统表引擎
-```
-
-要点小结：事务/锁粒度/聚簇三大区别、count(*) 行为差异的原因（MVCC 行数不定）、MyISAM 索引存地址 vs InnoDB 二级索引存主键。
-
-
 
 ## Buffer Pool 是什么？
 
@@ -89,14 +78,3 @@ young 区前 1/4 以内被访问 → 不移动（避免热页抖动）
 ```
 
 redo 写满是抖动主因：合理设置 redo 大小（`innodb_log_file_size`）减少强制刷脏。
-
-### 总结
-
-```
-Buffer Pool：以 16KB 页缓存数据，命中率是第一指标
-LRU 改进：young/old 分区 + 停留时间门槛，防全表扫描污染
-change buffer：二级非唯一索引的写缓冲，写多读少受益
-脏页：redo 写满会强制刷盘 → 业务抖动
-```
-
-要点小结：朴素 LRU 的污染问题与两区方案、old 区晋升条件（innodb_old_blocks_time）、change buffer 为什么唯一索引用不上、脏页刷盘的触发点。

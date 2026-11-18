@@ -180,6 +180,9 @@ where name like '%abc'    -- ✅ where name like 'abc%'
 where status != 1         -- ✅ 改写为 status in (0, 2) 或拆分查询
 ```
 
+> [!IMPORTANT]
+> 隐式类型转换可作为SQL排查问题案例
+
 ### 小表驱动大表
 
 ```sql

@@ -41,16 +41,6 @@ update a=1→2 → undo 记录 update a=2→1
 
 C 是目的，A/I/D 是手段；加上数据库约束（主键、唯一、外键）与应用层校验共同保证。
 
-### 总结
-
-```
-A = undo log 回滚
-D = redo log 重放（WAL）
-I = 锁（写写）+ MVCC（读写）
-C = A + I + D 的结果
-```
-
-要点小结：每个特性对应的实现组件、WAL 思想、C 是结果不是手段。
 
 
 
@@ -75,34 +65,12 @@ C = A + I + D 的结果
 | **可重复读（RR）** | ✅ | ✅ | ✅* | **InnoDB 默认** |
 | 串行化 | ✅ | ✅ | ✅ | 读加共享锁，并发最差 |
 
-*InnoDB 的 RR 通过 MVCC + Next-Key Lock 基本解决幻读（极端场景仍可穿透，见幻读题）。
 
 ```sql
 -- 查看/设置
 select @@transaction_isolation;
 set session transaction isolation level read committed;
 ```
-
-### 各级别实现手段
-
-```
-RU：直接读最新值，无隔离
-RC：MVCC，每条语句生成一次 ReadView
-RR：MVCC，事务第一条查询生成 ReadView（整个事务复用）+ Next-Key Lock
-Serializable：读全部加共享锁，退化为串行
-```
-
-### 总结
-
-```
-脏读 < 不可重复读 < 幻读，问题严重度递增
-级别越高越安全、并发越差
-InnoDB 默认 RR：MVCC 防读问题 + 间隙锁防幻读
-互联网公司常改用 RC（间隙锁少、死锁少）
-```
-
-要点小结：三类问题的区分（行内容 vs 行数）、四级对比表、RR 的实现组合、RC 与 RR 的生产选择。
-
 
 
 ## MVCC 的实现原理？
@@ -136,12 +104,12 @@ roll_pointer：指向 undo log 中的上一版本
 
 事务执行快照读时生成，包含四个字段：
 
-| 字段 | 含义 |
-|------|------|
-| m_ids | 生成时**活跃（未提交）**事务 ID 集合 |
-| min_trx_id | m_ids 中最小值 |
-| max_trx_id | 系统下一个将分配的事务 ID |
-| creator_trx_id | 当前事务自己的 ID |
+| 字段 | 含义                             |
+|------|----------------------------------|
+| m_ids | 生成时活跃（未提交）事务 ID 集合 |
+| min_trx_id | m_ids 中最小值                   |
+| max_trx_id | 系统下一个将分配的事务 ID        |
+| creator_trx_id | 当前事务自己的 ID                |
 
 ### 可见性判断规则
 
@@ -172,12 +140,48 @@ min_trx_id <= trx_id < max_trx_id
 | RC | **每条** select 都生成新的 | 能看到别的事务最新提交 → 不可重复读 |
 | RR | 事务**第一条** select 生成，全程复用 | 只能看到事务开始前提交的数据 → 可重复读 |
 
-### 总结
 
-```
-MVCC = 隐藏列(trx_id/roll_pointer) + undo 版本链 + ReadView
-不可见就沿版本链回溯，直到找到可见版本
-RC 每次查询新快照，RR 整个事务一个快照
+
+## 什么是两阶段提交（2PC）？有什么问题？
+
+单库事务靠本地 undo/redo 就能保证原子性；**跨库/跨服务**后，需要一个**协调者**让所有参与者要么全提交、要么全回滚。2PC 是最朴素的强一致方案。
+
+### 流程
+
+```mermaid
+sequenceDiagram
+    participant C as 协调者
+    participant A as 参与者 A
+    participant B as 参与者 B
+    C->>A: prepare：能否提交？
+    C->>B: prepare：能否提交？
+    Note over A: 执行事务、写日志、锁资源
+    A-->>C: yes
+    B-->>C: yes
+    Note over C: 全部 yes → 提交；任一 no → 回滚
+    C->>A: commit / rollback
+    C->>B: commit / rollback
+    A-->>C: ack
+    B-->>C: ack
 ```
 
-要点小结：ReadView 四字段与可见性规则、版本链回溯过程、快照读与当前读的区分、RC/RR 的时机差异。
+- **阶段一（投票）**：参与者执行事务但不提交，写好 undo/redo、锁定资源，回答 yes/no
+- **阶段二（执行）**：全部 yes 则协调者发 commit，参与者正式提交并释放资源；任一 no 则全部回滚
+
+### 问题
+
+| 问题 | 说明 |
+|------|------|
+| **同步阻塞** | prepare 到 commit 之间，参与者锁着资源干等，并发吞吐骤降 |
+| **协调者单点** | 协调者在阶段二前挂掉，参与者既不敢提交也不敢回滚，资源永久锁死 |
+| **数据不一致** | 阶段二的消息部分送达（网络分区），有的提交了有的没有 |
+| **性能差** | 两轮 RPC + 长时间持锁，互联网高并发场景基本不可用 |
+
+3PC 加入 CanCommit/PreCommit/DoCommit 三阶段与超时机制，缓解阻塞与单点，但仍无法根除不一致且更慢，实际很少使用。
+
+### 实际怎么做
+
+- 数据库层 XA 事务（MySQL XA、Spring JTA）就是 2PC，强一致但性能差，小规模内部系统可用
+- 互联网主流是**放弃强一致、换最终一致**：本地消息表 + MQ、RocketMQ 事务消息、TCC、Seata AT
+
+一句话：**2PC 用阻塞和单点换强一致，高并发下代价太大，所以实际多用最终一致方案**。

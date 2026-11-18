@@ -1,8 +1,8 @@
 ---
-title: 锁
+title: 死锁
 ---
 
-# 锁
+# 死锁
 
 
 
@@ -44,56 +44,3 @@ title: 锁
 | 降级 RC | 间隙锁大幅减少（RR 特有的 gap/next-key 死锁消失） |
 | 并发插入唯一键 | 改 `insert ... on duplicate key update` 或先 `select for update` |
 | 热点行 | 合并更新（攒批）、队列串行化（如扣减走 Redis/单队列） |
-
-
-
-
-
-
-## 幻读是如何解决的？
-
-RR 级别下，快照读和当前读用**不同机制**解决幻读：
-
-| 读类型 | 机制 | 说明 |
-|--------|------|------|
-| 快照读（普通 select） | **MVCC** | ReadView 固定，后插入的行 trx_id 不可见，读不到"幻影" |
-| 当前读（update / for update / lock in share mode） | **Next-Key Lock** | 锁住记录 + 间隙，别的事务插不进来 |
-
-### Next-Key Lock 防幻读示例
-
-```sql
--- 表有 id: 1, 5, 10
--- 事务A（RR）
-select * from t where id between 1 and 10 for update;
--- 加锁：(负无穷,1] (1,5] (5,10] (10,正无穷)  ← 记录+两侧间隙
--- 事务B 想 insert id=7 → 落在 (5,10) 间隙 → 阻塞，A 看不到新行 → 无幻读 ✅
-```
-
-### 两个"幻读穿透"场景
-
-MVCC + Next-Key 仍无法完全消灭幻读：
-
-```
-场景1：先快照读，后当前读
-事务A：select * from t where id = 15;        -- 快照读，读不到（无此行）
-事务B：insert id = 15; commit;
-事务A：update t set ... where id = 15;        -- 当前读：能改到（发现新行）✊
-事务A：select * from t where id = 15;         -- 更新后 trx_id 变成自己，可见 → "幻读"出现
-
-场景2：先当前读（for update），但条件未命中加不上锁
-事务A：select * from t where id = 15 for update;  -- 行不存在，锁不住不存在的行
-事务B：insert id = 15; commit;
-事务A：select * from t where id = 15;              -- 读到了 → "幻读"
-```
-
-严格防幻读：事务一开始就 `for update` 锁住范围（Gap Lock 防插入），或用 Serializable。
-
-### 总结
-
-```
-快照读防幻读：MVCC（ReadView 固定，新行不可见）
-当前读防幻读：Next-Key Lock（锁记录 + 间隙，堵住插入）
-完全杜绝：Serializable 或全程 for update
-```
-
-要点小结：两类读的不同防幻读机制、Next-Key 加锁区间示例、两个穿透场景的成因。

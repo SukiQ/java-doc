@@ -6,13 +6,14 @@ export default withMermaid(
     lang: 'zh-CN',
     base: '/java-doc/',
     title: 'Java 学习笔记',
-    description: 'Java 后端个人知识库：Java 基础 / JVM / JUC / 数据库 / RocketMQ / Spring / 架构 / 设计模式',
+    description: 'Java 后端个人知识库：Java 基础 / JVM / JUC / 数据库 / Redis / RocketMQ / Spring / 架构 / 设计模式',
     themeConfig: {
       nav: [
         { text: "Java 基础", link: "/java-basic/", activeMatch: "/java-basic/" },
         { text: "JVM", link: "/jvm/", activeMatch: "/jvm/" },
         { text: "JUC", link: "/juc/", activeMatch: "/juc/" },
         { text: "数据库", link: "/database/", activeMatch: "/database/" },
+        { text: "Redis", link: "/redis/basic", activeMatch: "/redis/" },
         { text: "RocketMQ", link: "/rocketmq/", activeMatch: "/rocketmq/" },
         { text: "Spring", link: "/spring/", activeMatch: "/spring/" },
         { text: "架构", link: "/architecture/", activeMatch: "/architecture/" },
@@ -59,11 +60,21 @@ export default withMermaid(
         { text: "索引", link: "/database/index" },
         { text: "SQL 优化", link: "/database/sql-optimization" },
         { text: "事务", link: "/database/transaction" },
-        { text: "锁", link: "/database/locks" },
+        { text: "死锁", link: "/database/dead-locks" },
         { text: "日志", link: "/database/logs" },
         { text: "存储引擎", link: "/database/storage-engines" },
         { text: "高可用", link: "/database/high-availability" },
-        { text: "MongoDB", link: "/database/mongodb" }
+        { text: "其他数据库", link: "/database/other-databases" }
+      ]
+    },
+    {
+      text: "Redis",
+      collapsed: false,
+      items: [
+        { text: "基础与数据结构", link: "/redis/basic" },
+        { text: "持久化与内存", link: "/redis/persistence" },
+        { text: "主从与集群", link: "/redis/high-availability" },
+        { text: "缓存与分布式锁", link: "/redis/cache" }
       ]
     },
     {
