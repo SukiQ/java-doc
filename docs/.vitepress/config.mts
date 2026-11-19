@@ -6,7 +6,7 @@ export default withMermaid(
     lang: 'zh-CN',
     base: '/java-doc/',
     title: 'Java 学习笔记',
-    description: 'Java 后端个人知识库：Java 基础 / JVM / JUC / 数据库 / Redis / RocketMQ / Spring / 架构 / 设计模式',
+    description: 'Java 后端个人知识库：Java 基础 / JVM / JUC / 数据库 / Redis / RocketMQ / Kafka / Spring / 架构 / 设计模式',
     themeConfig: {
       nav: [
         { text: "Java 基础", link: "/java-basic/", activeMatch: "/java-basic/" },
@@ -15,6 +15,7 @@ export default withMermaid(
         { text: "数据库", link: "/database/", activeMatch: "/database/" },
         { text: "Redis", link: "/redis/basic", activeMatch: "/redis/" },
         { text: "RocketMQ", link: "/rocketmq/", activeMatch: "/rocketmq/" },
+        { text: "Kafka", link: "/kafka/basic", activeMatch: "/kafka/" },
         { text: "Spring", link: "/spring/", activeMatch: "/spring/" },
         { text: "架构", link: "/architecture/", activeMatch: "/architecture/" },
         { text: "设计模式", link: "/design-pattern/", activeMatch: "/design-pattern/" }
@@ -83,6 +84,16 @@ export default withMermaid(
       items: [
         { text: "架构", link: "/rocketmq/architecture" },
         { text: "可靠性", link: "/rocketmq/reliability" }
+      ]
+    },
+    {
+      text: "Kafka",
+      collapsed: false,
+      items: [
+        { text: "基础与架构", link: "/kafka/basic" },
+        { text: "生产者", link: "/kafka/producer" },
+        { text: "消费者", link: "/kafka/consumer" },
+        { text: "高可用与运维", link: "/kafka/high-availability" }
       ]
     },
     {
